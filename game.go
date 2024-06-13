@@ -6,14 +6,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"golang.org/x/image/colornames"
 	"image"
-	"slices"
-)
-
-var (
-	nilNode   = Node{x: -1, y: -1}
-	pathStart = nilNode
-	pathEnd   = nilNode
-	obstacles []Node
 )
 
 type Game struct {
@@ -60,41 +52,32 @@ func (g *Game) Update() error {
 	p := image.Point{X: x, Y: y}
 
 	for _, node := range g.grid.Nodes() {
-		rect := g.getNodeInScreenSpace(node)
+		rect := g.getNodeInScreenSpace(*node)
 
 		if p.In(rect) {
 			// add obstacles
 			if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
-
-				// get the index of the current node in obstacles
-				index := slices.IndexFunc(obstacles, func(n Node) bool {
-					return n.Eq(node)
-				})
-
-				// not there add it or if there delete it
-				if index == -1 {
-					obstacles = append(obstacles, node)
-				} else {
-					obstacles = slices.Delete(obstacles, index, index+1)
-				}
+				node.IsObstacle = !node.IsObstacle
 			}
 
 			if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-				if slices.ContainsFunc(obstacles, func(n Node) bool {
-					return n.Eq(node)
-				}) {
+				if node.IsObstacle {
 					continue
-				} else if pathStart.Eq(nilNode) { // set start node
-					pathStart = node
-				} else if pathEnd.Eq(node) { // unset end node
-					pathEnd = nilNode
-				} else if pathStart.Eq(node) && pathEnd.Eq(nilNode) { // unset start node
-					pathStart = nilNode
-				} else if !pathStart.Eq(nilNode) && pathEnd.Eq(nilNode) { // set end node
-					pathEnd = node
+				} else if g.grid.PathStart == nil { // set start node
+					g.grid.PathStart = node
+				} else if g.grid.PathEnd == nil { // set end node
+					g.grid.PathEnd = node
+				} else if g.grid.PathEnd.Eq(*node) { // unset end node
+					g.grid.PathEnd = nil
+				} else if g.grid.PathEnd == nil && g.grid.PathStart.Eq(*node) { // unset start node
+					g.grid.PathStart = nil
 				}
 			}
 		}
+	}
+
+	if g.grid.PathStart != nil && g.grid.PathEnd != nil {
+		g.grid.IsSolved = SolveAStar(g.grid)
 	}
 
 	return nil
@@ -103,8 +86,8 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *ebiten.Image) {
 	for _, node := range g.grid.Nodes() {
 		for _, neighbour := range node.Neighbours() {
-			p1 := g.getNodeCentreInScreenSpace(node)
-			p2 := g.getNodeCentreInScreenSpace(neighbour)
+			p1 := g.getNodeCentreInScreenSpace(*node)
+			p2 := g.getNodeCentreInScreenSpace(*neighbour)
 
 			vector.StrokeLine(
 				screen,
@@ -120,25 +103,60 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	for _, node := range g.grid.Nodes() {
-		r := g.getNodeInScreenSpace(node)
+		r := g.getNodeInScreenSpace(*node)
 
 		colour := colornames.Gray
 
-		if slices.ContainsFunc(obstacles, func(n Node) bool {
-			return n.Eq(node)
-		}) {
+		if node.IsObstacle {
 			colour = colornames.Royalblue
 		}
 
-		if node.Eq(pathStart) {
+		if g.grid.PathStart != nil && node.Eq(*g.grid.PathStart) {
 			colour = colornames.Green
 		}
 
-		if node.Eq(pathEnd) {
+		if g.grid.PathEnd != nil && node.Eq(*g.grid.PathEnd) {
 			colour = colornames.Red
 		}
 
 		vector.DrawFilledRect(screen, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), colour, false)
+	}
+
+	// Draw Path by starting ath the end, and following the parent node trail
+	// back to the start - the start node will not have a parent path to follow
+	if g.grid.IsSolved {
+		p := g.grid.PathEnd
+
+		for p != nil {
+
+			if p.Parent != nil {
+				p1 := g.getNodeCentreInScreenSpace(*p)
+				p2 := g.getNodeCentreInScreenSpace(*p.Parent)
+
+				vector.StrokeLine(
+					screen,
+					float32(p1.X),
+					float32(p1.Y),
+					float32(p2.X),
+					float32(p2.Y),
+					4,
+					colornames.Yellow,
+					false)
+			}
+
+			r := g.getNodeInScreenSpace(*p)
+
+			vector.DrawFilledRect(
+				screen,
+				float32(r.Min.X),
+				float32(r.Min.Y),
+				float32(r.Dx()),
+				float32(r.Dy()),
+				colornames.Yellow,
+				false)
+
+			p = p.Parent
+		}
 	}
 
 }
