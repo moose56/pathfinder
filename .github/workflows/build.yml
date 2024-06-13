@@ -39,3 +39,41 @@ jobs:
 
     - name: Test
       run: go test -v ./...
+
+  deploy:
+    name: Deploy to GitHub pages
+    
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+   
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        
+      - name: Download Web Assembly artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm
+          path: www/
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: www/
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
