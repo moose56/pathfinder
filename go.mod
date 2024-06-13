@@ -1,4 +1,4 @@
-module pathfinder
+module github.com/moose56/pathfinder
 
 go 1.22
 
