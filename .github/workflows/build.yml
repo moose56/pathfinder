@@ -20,7 +20,7 @@ jobs:
       uses: egor-tensin/setup-gcc@v1.3
 
     - name: Install X11
-      uses: apt install libx11-dev
+      run: apt install libx11-dev
   
     - name: Set up Go
       uses: actions/setup-go@v5
