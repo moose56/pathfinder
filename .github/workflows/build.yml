@@ -15,12 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Install GCC
-      uses: egor-tensin/setup-gcc@v1.3
 
-    - name: Install X11
-      run: apt install libx11-dev
+    # taken from https://github.com/rangzen/go-ebiten-boids/blob/main/.github/workflows/wasm-build-deploy.yml
+    - name: Install Ebitengine dependencies
+      run: sudo apt install libc6-dev libglu1-mesa-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
   
     - name: Set up Go
       uses: actions/setup-go@v5
