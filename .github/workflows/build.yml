@@ -28,5 +28,14 @@ jobs:
     - name: Build
       run: go build -v ./...
 
+    - name: Build Web Assembly artifact
+      run: GOOS=js GOARCH=wasm go build -o pathfinder.wasm github.com/moose56/pathfinder
+
+    - name: Upload Web Assembly artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: wasm
+        path: pathfinder.wasm
+
     - name: Test
       run: go test -v ./...
